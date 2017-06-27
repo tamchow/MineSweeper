@@ -1,7 +1,11 @@
 package org.minesweeper.core;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
 /**
  * Encapsulates a MineSweeper game board.
  */
@@ -9,9 +13,9 @@ public class Board implements Serializable, Cloneable {
     private final int width, height;
     private final Cell[][] board;
     private final Cell[] mines;
-    private boolean firstTime;
     private int callsToUpdate, difficulty;
-    public Board(int width, int height, float mineFraction) {
+
+    public Board(final int width, final int height, final float mineFraction) {
         if (mineFraction < 0 || mineFraction > 1) {
             throw new IllegalArgumentException("Fraction of mines can only be between 0 & 1 : " + mineFraction);
         }
@@ -22,12 +26,11 @@ public class Board implements Serializable, Cloneable {
         this.height = board.length;
         this.width = board[0].length;
         mines = new Cell[Math.round(mineFraction * getHeight() * getWidth())];
-        firstTime = true;
         callsToUpdate = 0;
-        difficulty = -1;
         difficulty = get3BValue();
         initBoard();
     }
+
     public void initBoard() {
         for (int i = 0; i < getHeight(); ++i) {
             for (int j = 0; j < getWidth(); ++i) {
@@ -35,78 +38,82 @@ public class Board implements Serializable, Cloneable {
             }
         }
     }
+
     public Cell[][] getBoard() {
         return board;
     }
+
     public float getMineFraction() {
         return ((float) getMinesCount()) / (getHeight() * getWidth());
     }
+
     public int getWidth() {
         return width;
     }
+
     public int getHeight() {
         return height;
     }
+
     public int getMinesCount() {
         return getMines().length;
     }
-    public Cell[] getMines() {
+
+    private Cell[] getMines() {
         return mines;
     }
-    public Cell get(Cell cell) {
+
+    private Cell get(Cell cell) {
         return get(board, cell);
     }
-    public Cell get(Cell[][] board, Cell cell) {
+
+    private Cell get(Cell[][] board, Cell cell) {
         return get(board, cell.getX(), cell.getY());
     }
-    public void set(int x, int y, int neighbouringMineCount) {
-        set(board, x, y, neighbouringMineCount);
+
+    private void set(Cell[][] board, int x, int y, int neighbouringMineCount) {
+        get(board, x, y).setNeighbouringMineCount(neighbouringMineCount);
     }
-    public void set(Cell[][] board, int x, int y, int neighbouringMineCount) {
-        get(x, y).setNeighbouringMineCount(neighbouringMineCount);
-    }
-    public Cell get(int x, int y) {
+
+    private Cell get(int x, int y) {
         return get(board, x, y);
     }
-    public Cell get(Cell[][] board, int x, int y) {
+
+    private Cell get(Cell[][] board, int x, int y) {
         y = bounded(y, getHeight());
         return board[y][bounded(x, getWidth())];
     }
+
     private static int bounded(int ptr, int size) {
         return (ptr < 0) ? Math.abs(size + ptr) % size : ((ptr >= size) ? (ptr % size) : ptr);
     }
-    public void set(Cell cell, int neighbouringMineCount) {
-        set(board, cell, neighbouringMineCount);
-    }
-    public void set(Cell[][] board, Cell cell, int neighbouringMineCount) {
+
+    private void set(Cell[][] board, Cell cell, int neighbouringMineCount) {
         set(board, cell.getX(), cell.getY(), neighbouringMineCount);
     }
-    public boolean isClear(Cell cell) {
-        return isClear(board, cell);
-    }
-    public boolean isClear(Cell[][] board, Cell cell) {
+
+    private boolean isClear(Cell[][] board, Cell cell) {
         return isClear(board, cell.getX(), cell.getY());
     }
-    public boolean isClear(Cell[][] board, int x, int y) {
+
+    private boolean isClear(Cell[][] board, int x, int y) {
         return get(board, x, y).isClear();
     }
-    public boolean isClear(int x, int y) {
-        return isClear(board, x, y);
-    }
-    public boolean hasMine(int x, int y) {
-        return hasMine(board, x, y);
-    }
-    public boolean hasMine(Cell[][] board, int x, int y) {
+
+    private boolean hasMine(Cell[][] board, int x, int y) {
         return get(board, x, y).hasMine();
     }
-    public boolean hasMine(Cell cell) {
+
+    private boolean hasMine(Cell cell) {
         return hasMine(board, cell);
     }
-    public boolean hasMine(Cell[][] board, Cell cell) {
+
+    private boolean hasMine(Cell[][] board, Cell cell) {
         return hasMine(board, cell.getX(), cell.getY());
     }
-    public ArrayList<Cell> getMarkedCells() {
-        ArrayList<Cell> marked = new ArrayList<>(getHeight() * board[0].length);
+
+    private List<Cell> getMarkedCells() {
+        List<Cell> marked = new ArrayList<>(getHeight() * board[0].length);
         for (Cell[] row : board) {
             for (Cell cell : row) {
                 if (isMarked(cell)) {
@@ -116,32 +123,35 @@ public class Board implements Serializable, Cloneable {
         }
         return marked;
     }
-    public Cell[] getNeighbours(Cell cell) {
+
+    private Cell[] getNeighbours(Cell cell) {
         return getNeighbours(board, cell);
     }
-    public Cell[] getNeighbours(Cell[][] board, Cell cell) {
+
+    private Cell[] getNeighbours(Cell[][] board, Cell cell) {
         cell = get(board, cell);
         Cell[] neighbours = new Cell[Cell.MAX_NEIGHBOURS];
         for (int y = cell.getY() - 1, count = 0; y <= cell.getY() + 1; ++y) {
             for (int x = cell.getX() - 1; x <= cell.getX() + 1 && count < neighbours.length; ++x) {
-                if (cell.getX() == x && cell.getY() == y) {
-                    continue;
+                if (!(cell.getX() == x || cell.getY() == y)) {
+                    neighbours[count++] = get(board, x, y);
                 }
-                neighbours[count++] = get(board, x, y);
             }
         }
         return neighbours;
     }
-    public boolean isLost(Cell selected) {
+
+    private boolean isLost(Cell selected) {
         boolean lost = hasMine(selected);
         if (lost) {
             reveal(selected);
-            //reveal all the mines,which hadn't been revealed
+            //reveal all the mines, which hadn't been revealed
             revealAll();
         }
         return lost;
     }
-    public void revealAll() {
+
+    private void revealAll() {
         for (Cell[] row : board) {
             for (Cell cell : row) {
                 if (!hasBeenRevealed(cell)) {
@@ -150,16 +160,20 @@ public class Board implements Serializable, Cloneable {
             }
         }
     }
-    private void updateCellWithMineCount(Cell cell) {
-        updateCellWithMineCount(board, cell);
+
+    private void updateCellsWithMineCountAndReveal(Cell cell) {
+        updateCellsWithMineCountAndReveal(board, cell);
     }
-    private void updateCellWithMineCount(Cell[][] board, Cell cell) {
+
+    private void updateCellsWithMineCountAndReveal(Cell[][] board, Cell cell) {
+        reveal(cell);
         //maintain the suspense
         if (hasMine(board, cell) || isMarked(board, cell)) {
             return;
         }
         for (Cell neighbour : getNeighbours(board, cell)) {
-            if (cell.getNumberOfNeighboursWithMines() < 0 || cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
+            if (cell.getNumberOfNeighboursWithMines() < 0 ||
+                    cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
                 break;
             }
             if (hasMine(board, neighbour)) {
@@ -167,10 +181,11 @@ public class Board implements Serializable, Cloneable {
                 set(board, cell, cell.getNumberOfNeighboursWithMines() + 1);
             } else if (isClear(board, neighbour) && (!(hasBeenRevealed(board, neighbour) || isMarked(board, neighbour) || hasMine(board, neighbour)))) {
                 //recursively update mine counts of all clear neighbours
-                updateCellWithMineCount(board, neighbour);
+                updateCellsWithMineCountAndReveal(board, neighbour);
             }
         }
     }
+
     /**
      * Use for calculating scores:
      * <ol>
@@ -181,10 +196,6 @@ public class Board implements Serializable, Cloneable {
      * @return an objective measure of the difficulty of this minesweeper board
      */
     public int get3BValue() {
-        //status check
-        if (difficulty >= 0) {
-            return difficulty;
-        }
         //initialization
         Cell[][] backup = new Cell[getHeight()][getWidth()];
         for (int i = 0; i < getHeight(); ++i) {
@@ -195,7 +206,7 @@ public class Board implements Serializable, Cloneable {
         //processing
         for (Cell[] row : backup) {
             for (Cell cell : row) {
-                updateCellWithMineCount(backup, cell);
+                updateCellsWithMineCountAndReveal(backup, cell);
             }
         }
         //calculation
@@ -214,9 +225,13 @@ public class Board implements Serializable, Cloneable {
                 }
             }
         }
-        difficulty = value;
         return value;
     }
+
+    public int getDifficulty() {
+        return difficulty;
+    }
+
     private void floodFillMark(Cell[][] backup, Cell cell) {
         Cell[] neighbours = getNeighbours(backup, cell);
         for (Cell neighbour : neighbours) {
@@ -228,7 +243,8 @@ public class Board implements Serializable, Cloneable {
             }
         }
     }
-    public boolean isWon() {
+
+    private boolean isWon() {
         boolean win = true;
         for (Cell[] row : board) {
             for (Cell cell : row) {
@@ -244,9 +260,11 @@ public class Board implements Serializable, Cloneable {
         }
         return win;
     }
-    public int getClicks() {
+
+    private int getClicks() {
         return callsToUpdate;
     }
+
     /**
      * The click-based score, depending on number of calls to {@link #update(Cell)}.
      * <br>
@@ -262,6 +280,7 @@ public class Board implements Serializable, Cloneable {
     public double getClickBasedScore() {
         return ((double) getClicks()) / get3BValue();
     }
+
     /**
      * Guaranteed to be non-negative.
      *
@@ -271,65 +290,63 @@ public class Board implements Serializable, Cloneable {
     public int getPresentableScore(int timeTaken) {
         return Math.round((float) (getClickBasedScore() * timeTaken));
     }
-    public void reveal(Cell cell) {
+
+    private void reveal(Cell cell) {
         reveal(cell.getX(), cell.getY());
     }
-    public void reveal(int x, int y) {
+
+    private void reveal(int x, int y) {
         get(x, y).reveal();
     }
-    public boolean hasBeenRevealed(Cell cell) {
+
+    private boolean hasBeenRevealed(Cell cell) {
         return hasBeenRevealed(board, cell);
     }
-    public boolean hasBeenRevealed(Cell[][] board, Cell cell) {
+
+    private boolean hasBeenRevealed(Cell[][] board, Cell cell) {
         return hasBeenRevealed(board, cell.getX(), cell.getY());
     }
-    public boolean hasBeenRevealed(int x, int y) {
-        return hasBeenRevealed(board, x, y);
-    }
-    public boolean hasBeenRevealed(Cell[][] board, int x, int y) {
+
+    private boolean hasBeenRevealed(Cell[][] board, int x, int y) {
         return get(board, x, y).hasBeenRevealed();
     }
-    public void mark(Cell cell) {
-        mark(board, cell);
-    }
-    public void mark(Cell[][] board, Cell cell) {
+
+    private void mark(Cell[][] board, Cell cell) {
         mark(board, cell.getX(), cell.getY());
     }
-    public void mark(Cell[][] board, int x, int y) {
+
+    private void mark(Cell[][] board, int x, int y) {
         get(board, x, y).mark();
     }
-    public void mark(int x, int y) {
-        mark(board, x, y);
-    }
-    public boolean isMarked(Cell cell) {
+
+    private boolean isMarked(Cell cell) {
         return isMarked(board, cell);
     }
-    public boolean isMarked(Cell[][] board, Cell cell) {
+
+    private boolean isMarked(Cell[][] board, Cell cell) {
         return isMarked(board, cell.getX(), cell.getY());
     }
-    public boolean isMarked(int x, int y) {
-        return isMarked(board, x, y);
-    }
-    public boolean isMarked(Cell[][] board, int x, int y) {
+
+    private boolean isMarked(Cell[][] board, int x, int y) {
         return get(board, x, y).isMarked();
     }
-    public GameStatus update(Cell selected) {
-        if (firstTime) {
+
+    public Status update(Cell selected) {
+        if (callsToUpdate == 0) {
             plantMines(selected);
-            firstTime = false;
         }
         ++callsToUpdate;
         if (isLost(selected)) {
-            return GameStatus.LOST;
+            return Status.LOST;
         } else if (isWon()) {
             reveal(selected);
-            return GameStatus.WON;
+            return Status.WON;
         } else {
-            reveal(selected);
-            updateCellWithMineCount(selected);
-            return GameStatus.CONTINUING;
+            updateCellsWithMineCountAndReveal(selected);
+            return Status.CONTINUING;
         }
     }
+
     /**
      * Call this before updating neighbouring mines count for the first time.
      *
@@ -349,10 +366,15 @@ public class Board implements Serializable, Cloneable {
             }
         }
     }
-    private int randInt(int max) {
+
+    private static int randInt(int max) {
         return randInt(0, max - 1);
     }
-    private int randInt(int min, int max) {
-        return (int) (Math.random() * (Math.abs(max - min) + 1)) + (min <= max ? min : max);
+
+    private static int randInt(int min, int max) {
+        return min + new Random().nextInt(Math.abs(max-min));
+    }
+    public enum Status {
+        WON, LOST, CONTINUING
     }
 }
